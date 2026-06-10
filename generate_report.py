@@ -3,6 +3,9 @@ import os
 import pandas as pd
 import numpy as np
 import openpyxl
+import tkinter as tk
+from tkinter import ttk, messagebox
+from supabase import create_client
 from openpyxl.chart import BarChart, LineChart, Reference
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
@@ -16,13 +19,56 @@ load_dotenv()
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-TARGET_BUILDING = os.getenv("TARGET_BUILDING", "VETPSU")
 
+# ============================================================
+# ดึงรายชื่อตึกจาก Supabase แล้วแสดง Popup ให้เลือก
+# ============================================================
+client = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+buildings_resp = client.table("surveys").select("building").execute()
+buildings = sorted(set(row["building"] for row in buildings_resp.data if row.get("building")))
+
+if not buildings:
+    print("❌ ไม่พบข้อมูลตึกใน Supabase")
+    exit()
+
+def select_building(buildings):
+    result = []
+
+    root = tk.Tk()
+    root.title("เลือกตึก")
+    root.geometry("320x140")
+    root.resizable(False, False)
+    root.eval("tk::PlaceWindow . center")
+
+    tk.Label(root, text="เลือกตึกที่ต้องการ generate report:", font=("Arial", 11)).pack(pady=12)
+
+    selected = tk.StringVar(value=buildings[0])
+    dropdown = ttk.Combobox(root, textvariable=selected, values=buildings, state="readonly", width=28, font=("Arial", 11))
+    dropdown.pack()
+
+    def confirm():
+        result.append(selected.get())
+        root.destroy()
+
+    def on_close():
+        root.destroy()
+
+    root.protocol("WM_DELETE_WINDOW", on_close)
+    tk.Button(root, text="ตกลง", command=confirm, width=12, font=("Arial", 10)).pack(pady=12)
+    root.mainloop()
+
+    return result[0] if result else None
+
+TARGET_BUILDING = select_building(buildings)
+
+if not TARGET_BUILDING:
+    print("❌ ไม่ได้เลือกตึก หยุดการทำงาน")
+    exit()
 
 # ============================================================
 # ดึงข้อมูล
 # ============================================================
-client = create_client(SUPABASE_URL, SUPABASE_KEY)
 response = client.table("surveys").select("*").eq("building", TARGET_BUILDING).execute()
 df = pd.DataFrame(response.data)
 print(f"surveys: {len(df)} แถว")
@@ -128,6 +174,10 @@ def make_line_chart(title, y_title, x_title, y_min=0, width=26, height=14):
     c.x_axis.tickLblPos = "low"
     c.x_axis.noMultiLvlLbl = True
     return c
+
+# สร้างโฟลเดอร์ตามชื่อตึก
+output_dir = os.path.join("Reports", TARGET_BUILDING)
+os.makedirs(output_dir, exist_ok=True)
 
 # ============================================================
 # EXCEL
@@ -356,7 +406,7 @@ if not df_hops.empty:
         ws_mtr.column_dimensions[get_column_letter(col[0].column)].width = min(max_w, 20)
     ws_mtr.freeze_panes = "A2"
 
-xlsx_name = f"wifi_chart_{TARGET_BUILDING}.xlsx"
+xlsx_name = os.path.join(output_dir, f"wifi_report_{TARGET_BUILDING}.xlsx")
 wb.save(xlsx_name)
 print(f"✅ Excel: {xlsx_name}")
 
@@ -570,7 +620,7 @@ for room in rooms:
 doc.add_heading("ปัญหาที่ตรวจพบ", level=3)
 doc.add_paragraph("[กรอกรายละเอียดปัญหาที่ตรวจพบที่นี่]")
 
-docx_name = f"wifi_report_{TARGET_BUILDING}.docx"
+docx_name = os.path.join(output_dir, f"wifi_report_{TARGET_BUILDING}.docx")
 doc.save(docx_name)
 print(f"✅ Word:  {docx_name}")
 print("✅ เสร็จสมบูรณ์!")
