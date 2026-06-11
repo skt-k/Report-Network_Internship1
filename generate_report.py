@@ -419,11 +419,11 @@ section.right_margin  = Cm(2.5)
 # ----------------------------------------------------------
 # Heading 1: ชื่อคณะ (แก้ได้ภายหลัง)
 p = doc.add_heading(f"ผลการสำรวจคุณภาพ WiFi", level=1)
-p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+p.alignment = WD_ALIGN_PARAGRAPH.LEFT
 
 survey_date = pd.to_datetime(df["survey_timestamp"].iloc[0]).strftime("%d/%m/%Y") if "survey_timestamp" in df.columns else "-"
 info = doc.add_paragraph(f"วันที่สำรวจ: {survey_date}  |  จำนวนจุดสำรวจ: {len(df)} จุด")
-info.alignment = WD_ALIGN_PARAGRAPH.CENTER
+info.alignment = WD_ALIGN_PARAGRAPH.LEFT
 doc.add_page_break()
 
 # Heading 2: อาคาร
