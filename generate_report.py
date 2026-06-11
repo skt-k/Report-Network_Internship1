@@ -41,10 +41,10 @@ def select_building(buildings):
     root.resizable(False, False)
     root.eval("tk::PlaceWindow . center")
 
-    tk.Label(root, text="เลือกตึกที่ต้องการ generate report:", font=("Arial", 11)).pack(pady=12)
+    tk.Label(root, text="เลือกตึกที่ต้องการ generate report:", font=("TH Sarabun New", 11)).pack(pady=12)
 
     selected = tk.StringVar(value=buildings[0])
-    dropdown = ttk.Combobox(root, textvariable=selected, values=buildings, state="readonly", width=28, font=("Arial", 11))
+    dropdown = ttk.Combobox(root, textvariable=selected, values=buildings, state="readonly", width=28, font=("TH Sarabun New", 11))
     dropdown.pack()
 
     def confirm():
@@ -55,7 +55,7 @@ def select_building(buildings):
         root.destroy()
 
     root.protocol("WM_DELETE_WINDOW", on_close)
-    tk.Button(root, text="ตกลง", command=confirm, width=12, font=("Arial", 10)).pack(pady=12)
+    tk.Button(root, text="ตกลง", command=confirm, width=12, font=("TH Sarabun New", 10)).pack(pady=12)
     root.mainloop()
 
     return result[0] if result else None
@@ -99,7 +99,7 @@ def safe_val(val, decimals=None):
 
 def bold_fill_cell(cell, text, bg="2C3E50", fg="FFFFFF", size=9):
     cell.value = text
-    cell.font = Font(bold=True, color=fg, size=size, name="Arial")
+    cell.font = Font(bold=True, color=fg, size=size, name="TH Sarabun New")
     cell.fill = PatternFill("solid", fgColor=bg)
     cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
 
@@ -113,6 +113,7 @@ def add_word_placeholder(doc, text):
     run.font.color.rgb = RGBColor(0xAA, 0xAA, 0xAA)
     run.font.italic = True
     run.font.size = Pt(10)
+    run.font.name = "TH Sarabun New"
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
 
 def shade_cell(cell, color):
@@ -124,12 +125,15 @@ def shade_cell(cell, color):
     shd.set(qn("w:fill"), color)
     tcPr.append(shd)
 
-def style_word_header(cell, text, bg="2C3E50", fg="FFFFFF"):
+def style_word_header(cell, text, bg="1B2A3B", fg="FFFFFF"):
     cell.paragraphs[0].clear()
     run = cell.paragraphs[0].add_run(text)
     run.font.bold = True
+    run.font.italic = False
+    run.font.underline = False
     run.font.color.rgb = RGBColor.from_string(fg)
-    run.font.size = Pt(8)
+    run.font.size = Pt(10)
+    run.font.name = "TH Sarabun New"
     cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
     shade_cell(cell, bg)
 
@@ -184,8 +188,8 @@ os.makedirs(output_dir, exist_ok=True)
 # ============================================================
 wb = openpyxl.Workbook()
 HEADER_FILL = PatternFill("solid", fgColor="2C3E50")
-HEADER_FONT = Font(bold=True, color="FFFFFF", size=9, name="Arial")
-DATA_FONT   = Font(size=9, name="Arial")
+HEADER_FONT = Font(bold=True, color="FFFFFF", size=9, name="TH Sarabun New")
+DATA_FONT   = Font(size=9, name="TH Sarabun New")
 rating_fills = {
     "Good":      PatternFill("solid", fgColor="D5F5E3"),
     "Excellent": PatternFill("solid", fgColor="A9DFBF"),
@@ -250,7 +254,7 @@ for col in ws_data.columns:
 # ----------------------------------------------------------
 ws_rssi = wb.create_sheet("กราฟ RSSI")
 
-headers_rssi = ["ห้อง / จุด", "RSSI (dBm)", "Signal %"]
+headers_rssi = ["ห้อง / จุด", "RSSI (dBm)"]
 for ci, h in enumerate(headers_rssi, 1):
     c = ws_rssi.cell(1, ci, h)
     c.font = HEADER_FONT
@@ -260,11 +264,9 @@ for ci, h in enumerate(headers_rssi, 1):
 for i, (_, row) in enumerate(df.iterrows(), 2):
     ws_rssi.cell(i, 1, f"{row['room_point']} - {row.get('note','')}")
     ws_rssi.cell(i, 2, safe_float(row.get("rssi_dbm")))
-    ws_rssi.cell(i, 3, safe_float(row.get("signal_percent")))
 
 ws_rssi.column_dimensions["A"].width = 30
 ws_rssi.column_dimensions["B"].width = 14
-ws_rssi.column_dimensions["C"].width = 14
 
 rssi_vals = df["rssi_dbm"].dropna().astype(float)
 rssi_min = int(rssi_vals.min()) - 5 if len(rssi_vals) else -80
@@ -283,18 +285,7 @@ c1.add_data(Reference(ws_rssi, min_col=2, min_row=1, max_row=len(df)+1), titles_
 c1.set_categories(Reference(ws_rssi, min_col=1, min_row=2, max_row=len(df)+1))
 ws_rssi.add_chart(c1, "E2")
 
-# Signal % bar chart
-c2 = make_bar_chart(
-    title="Signal % ตามจุดสำรวจ",
-    y_title="%",
-    x_title="ห้อง / จุดสำรวจ",
-    y_min=0,
-    y_max=100,
-    major_unit=10,
-)
-c2.add_data(Reference(ws_rssi, min_col=3, min_row=1, max_row=len(df)+1), titles_from_data=True)
-c2.set_categories(Reference(ws_rssi, min_col=1, min_row=2, max_row=len(df)+1))
-ws_rssi.add_chart(c2, "E22")
+
 
 # ----------------------------------------------------------
 # Sheet 3: กราฟ Speed
@@ -406,6 +397,8 @@ if not df_hops.empty:
         ws_mtr.column_dimensions[get_column_letter(col[0].column)].width = min(max_w, 20)
     ws_mtr.freeze_panes = "A2"
 
+
+
 xlsx_name = os.path.join(output_dir, f"wifi_report_{TARGET_BUILDING}.xlsx")
 wb.save(xlsx_name)
 print(f"✅ Excel: {xlsx_name}")
@@ -465,8 +458,6 @@ doc.add_heading("กราฟสรุปภาพรวม", level=3)
 chart_placeholders = [
     ("ความแรงสัญญาณ RSSI (dBm) ตามจุดสำรวจ",
      f"Copy กราฟจาก {xlsx_name} → Sheet 'กราฟ RSSI' (กราฟบน)"),
-    ("Signal % ตามจุดสำรวจ",
-     f"Copy กราฟจาก {xlsx_name} → Sheet 'กราฟ RSSI' (กราฟล่าง)"),
     ("ความเร็ว TCP Upload / Download / UDP (Mbps)",
      f"Copy กราฟจาก {xlsx_name} → Sheet 'กราฟ Speed'"),
     ("Latency — Ping Gateway vs Server (ms)",
@@ -504,115 +495,154 @@ field_map = [
     ("Server Loss %",           "ping_server_loss_pct"),
     ("TCP Upload (Mbps)",       "tcp_upload_mbps"),
     ("TCP Download (Mbps)",     "tcp_download_mbps"),
-    ("UDP Target BW",           "udp_target_bandwidth"),
+    ("UDP Target BW (Mbps)",    "udp_target_bandwidth"),
     ("UDP Actual (Mbps)",       "udp_actual_mbps"),
     ("UDP Jitter (ms)",         "udp_jitter_ms"),
     ("UDP Packet Loss %",       "udp_packetloss_pct"),
     ("Co-Channel AP",           "co_channel_ap_count"),
     ("Adjacent AP",             "adjacent_ap_count"),
     ("Strongest Neighbor RSSI", "strongest_neighbor_rssi"),
-    ("Noise Floor (dBm)",       "noise_floor_dbm"),
-    ("SNR (dB)",                "snr_db"),
-    ("SNR Quality",             "snr_quality"),
     ("Rating",                  "rating"),
 ]
 
-rooms = df["room_point"].unique()
+# คอลัมน์ที่เว้นว่างไว้กรอกเอง
+MANUAL_BLANK_COLS = {"co_channel_ap_count", "strongest_neighbor_rssi", "adjacent_ap_count"}
 
 # ----------------------------------------------------------
-# Heading 3: รายห้อง  (อยู่ใต้ อาคาร)
+# Heading 3: ชั้น → Heading 4: ห้อง  (อยู่ใต้ อาคาร)
 # ----------------------------------------------------------
-for room in rooms:
-    df_room = df[df["room_point"] == room].reset_index(drop=True)
-    n_pts   = len(df_room)
+floors = df["floor"].fillna("ไม่ระบุชั้น").unique()
+floors_sorted = sorted(floors, key=lambda x: (str(x) == "ไม่ระบุชั้น", x))
 
-    doc.add_heading(f"ห้อง: {room}", level=3)
+for floor_val in floors_sorted:
+    df_floor = df[df["floor"].fillna("ไม่ระบุชั้น") == floor_val].reset_index(drop=True)
+    doc.add_heading(f"ชั้น {floor_val}", level=3)
 
-    # Heading 4: ข้อมูลทั่วไป
-    doc.add_heading("ข้อมูลทั่วไปของห้อง", level=4)
-    t_info = doc.add_table(rows=2, cols=3)
-    t_info.style = "Table Grid"
-    for ci, h_ in enumerate(["ห้อง", "ขนาดพื้นที่", "จำนวน AP"]):
-        style_word_header(t_info.rows[0].cells[ci], h_)
-    t_info.rows[1].cells[0].text = str(room)
-    t_info.rows[1].cells[1].text = ""
-    t_info.rows[1].cells[2].text = ""
-    doc.add_paragraph("")
+    rooms = df_floor["room_point"].unique()
+    for room in rooms:
+        df_room = df_floor[df_floor["room_point"] == room].reset_index(drop=True)
+        n_pts   = len(df_room)
 
-    # Heading 4: ข้อมูลการวัด WiFi
-    doc.add_heading("ข้อมูลการวัด WiFi", level=4)
-    t_wifi = doc.add_table(rows=len(field_map)+1, cols=n_pts+1)
-    t_wifi.style = "Table Grid"
+        doc.add_heading(f"ห้อง: {room}", level=4)
 
-    style_word_header(t_wifi.rows[0].cells[0], "รายการ", bg="34495E")
-    for pt_i, (_, pt_row) in enumerate(df_room.iterrows()):
-        style_word_header(
-            t_wifi.rows[0].cells[pt_i+1],
-            f"จุด: {pt_row.get('note', pt_i+1)}",
-            bg="34495E"
-        )
+        # Heading 5: ข้อมูลทั่วไป
+        doc.add_heading("ข้อมูลทั่วไปของห้อง", level=5)
+        t_info = doc.add_table(rows=2, cols=3)
+        t_info.style = "Table Grid"
+        for ci, h_ in enumerate(["ห้อง", "ขนาดพื้นที่", "จำนวน AP"]):
+            style_word_header(t_info.rows[0].cells[ci], h_)
+        t_info.rows[1].cells[0].text = str(room)
+        t_info.rows[1].cells[1].text = ""
+        t_info.rows[1].cells[2].text = ""
+        p_cap = doc.add_paragraph()
+        run_cap = p_cap.add_run("อัตราส่วนจำนวน Client ที่รองรับได้ต่อ Access Point (Clients per AP):  ")
+        run_cap.font.bold = True
+        run_cap.font.size = Pt(10)
+        run_cap.font.name = "TH Sarabun New"
+        run_blank = p_cap.add_run("_______________")
+        run_blank.font.size = Pt(10)
+        run_blank.font.name = "TH Sarabun New"
+        doc.add_paragraph("")
 
-    for fi, (label, col) in enumerate(field_map, 1):
-        cell0 = t_wifi.rows[fi].cells[0]
-        cell0.text = label
-        if cell0.paragraphs[0].runs:
-            cell0.paragraphs[0].runs[0].font.bold = True
-            cell0.paragraphs[0].runs[0].font.size = Pt(8)
-        for pt_i, (_, pt_row) in enumerate(df_room.iterrows()):
-            val  = safe_val(pt_row.get(col))
-            cell = t_wifi.rows[fi].cells[pt_i+1]
-            cell.text = val
-            if cell.paragraphs[0].runs:
-                cell.paragraphs[0].runs[0].font.size = Pt(8)
-            if col == "rating":
-                color_map = {"Good":"D5F5E3","Excellent":"A9DFBF","Poor":"FADBD8"}
-                shade_cell(cell, color_map.get(val, "FFFFFF"))
-    doc.add_paragraph("")
+        # Heading 5: ข้อมูลการวัด WiFi -- แยกตาม SSID
+        ssids_in_room = df_room["ssid"].unique().tolist()
+        for ssid_val in ssids_in_room:
+            df_ssid = df_room[df_room["ssid"] == ssid_val].reset_index(drop=True)
+            n_ssid_pts = len(df_ssid)
 
-    # Heading 4: nperf
-    doc.add_heading("ผลการทดสอบ nperf", level=4)
-    t_np = doc.add_table(rows=2, cols=4)
-    t_np.style = "Table Grid"
-    for ci, h_ in enumerate(["Download (Mbps)", "Upload (Mbps)", "Latency (ms)", "Jitter (ms)"]):
-        style_word_header(t_np.rows[0].cells[ci], h_, bg="1A5276")
-    for ci in range(4):
-        t_np.rows[1].cells[ci].text = ""
-    doc.add_paragraph("")
+            doc.add_heading(f"ข้อมูลการวัด WiFi (SSID: {ssid_val})", level=5)
+            t_wifi = doc.add_table(rows=len(field_map)+2, cols=n_ssid_pts+1)
+            t_wifi.style = "Table Grid"
 
-    # Heading 4: WinMTR Traceroute
-    doc.add_heading("ผล Traceroute", level=4)
-    if not df_hops.empty:
-        room_ids   = df_room["id"].tolist()
-        df_rm_hops = df_hops[df_hops["survey_id"].isin(room_ids)].sort_values(["survey_id","hop_no"])
-        if not df_rm_hops.empty:
-            mtr_f  = ["hop_no","ip","loss_pct","sent","recv","best_ms","avg_ms","worst_ms","last_ms"]
-            mtr_th = ["Hop #","IP","Loss %","Sent","Recv","Best (ms)","Avg (ms)","Worst (ms)","Last (ms)"]
-            t_mtr  = doc.add_table(rows=1, cols=len(mtr_f))
-            t_mtr.style = "Table Grid"
-            for ci, h_ in enumerate(mtr_th):
-                style_word_header(t_mtr.rows[0].cells[ci], h_, bg="1A5276")
-            for _, hop in df_rm_hops.iterrows():
-                r = t_mtr.add_row()
-                for ci, col in enumerate(mtr_f):
-                    r.cells[ci].text = safe_val(hop.get(col))
-                    if r.cells[ci].paragraphs[0].runs:
-                        r.cells[ci].paragraphs[0].runs[0].font.size = Pt(8)
-        else:
-            doc.add_paragraph("ไม่พบข้อมูล WinMTR สำหรับห้องนี้")
-    else:
-        doc.add_paragraph("ไม่มีข้อมูล WinMTR")
-    doc.add_paragraph("")
+            # แถวที่ 0 col0 + แถว 1 col0: merge แนวตั้ง → "รายการ"
+            t_wifi.rows[0].cells[0].merge(t_wifi.rows[1].cells[0])
+            hdr_cell = t_wifi.rows[0].cells[0]
+            style_word_header(hdr_cell, "รายการ")
+            # แถวที่ 0 col1..n: merge แนวนอน → "ตำแหน่งที่วัด"
+            if n_ssid_pts > 1:
+                t_wifi.rows[0].cells[1].merge(t_wifi.rows[0].cells[n_ssid_pts])
+            style_word_header(t_wifi.rows[0].cells[1], "ตำแหน่งที่วัด")
 
-    # Heading 4: Spectrum
-    doc.add_heading("รูป Spectrum Analyzer", level=4)
-    add_word_placeholder(doc, f"แทรกรูป Spectrum ห้อง {room} ที่นี่")
-    doc.add_paragraph("")
+            # แถวที่ 1: col0 ถูก merge ไปแล้ว → ใส่แค่ชื่อจุดแต่ละคอลัมน์
+            for pt_i, (_, pt_row) in enumerate(df_ssid.iterrows()):
+                style_word_header(
+                    t_wifi.rows[1].cells[pt_i+1],
+                    f"{pt_row.get('note', pt_i+1)}",
+                    bg="2E4057",
+                )
 
-    # Heading 4: รูปห้อง
-    doc.add_heading("รูปภาพห้อง", level=4)
-    add_word_placeholder(doc, f"แทรกรูปภาพห้อง {room} ที่นี่")
+            for fi, (label, col) in enumerate(field_map, 2):
+                cell0 = t_wifi.rows[fi].cells[0]
+                # ถ้า cell0 ยัง reference ไปที่ merged header cell ให้ข้ามไป
+                if cell0._tc is not hdr_cell._tc:
+                    cell0.paragraphs[0].clear()
+                    run0 = cell0.paragraphs[0].add_run(label)
+                    run0.font.bold = True
+                    run0.font.italic = False
+                    run0.font.size = Pt(10)
+                    run0.font.name = "TH Sarabun New"
+                    cell0.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
+                for pt_i, (_, pt_row) in enumerate(df_ssid.iterrows()):
+                    cell = t_wifi.rows[fi].cells[pt_i+1]
+                    if col in MANUAL_BLANK_COLS:
+                        cell.text = ""
+                    else:
+                        val = safe_val(pt_row.get(col))
+                        cell.text = val
+                        if col == "rating":
+                            color_map = {"Good":"D5F5E3","Excellent":"A9DFBF","Poor":"FADBD8"}
+                            shade_cell(cell, color_map.get(val, "FFFFFF"))
+                    if cell.paragraphs[0].runs:
+                        cell.paragraphs[0].runs[0].font.italic = False
+                        cell.paragraphs[0].runs[0].font.size = Pt(10)
+                        cell.paragraphs[0].runs[0].font.name = "TH Sarabun New"
+                    cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
+            # Heading 5: nperf (แยกตาม SSID)
+            doc.add_heading("ผลการทดสอบ nperf", level=5)
+            t_np = doc.add_table(rows=2, cols=4)
+            t_np.style = "Table Grid"
+            for ci, h_ in enumerate(["Download (Mbps)", "Upload (Mbps)", "Latency (ms)", "Jitter (ms)"]):
+                style_word_header(t_np.rows[0].cells[ci], h_)
+            for ci in range(4):
+                t_np.rows[1].cells[ci].text = ""
+            doc.add_paragraph("")
 
-    doc.add_page_break()
+            # Heading 5: WinMTR Traceroute (แยกตาม SSID)
+            doc.add_heading("ผล Traceroute", level=5)
+            if not df_hops.empty:
+                ssid_ids   = df_ssid["id"].tolist()
+                df_ss_hops = df_hops[df_hops["survey_id"].isin(ssid_ids)].sort_values(["survey_id","hop_no"])
+                if not df_ss_hops.empty:
+                    mtr_f  = ["hop_no","ip","loss_pct","sent","recv","best_ms","avg_ms","worst_ms","last_ms"]
+                    mtr_th = ["Hop #","IP","Loss %","Sent","Recv","Best (ms)","Avg (ms)","Worst (ms)","Last (ms)"]
+                    t_mtr  = doc.add_table(rows=1, cols=len(mtr_f))
+                    t_mtr.style = "Table Grid"
+                    for ci, h_ in enumerate(mtr_th):
+                        style_word_header(t_mtr.rows[0].cells[ci], h_)
+                    for _, hop in df_ss_hops.iterrows():
+                        r = t_mtr.add_row()
+                        for ci, col in enumerate(mtr_f):
+                            r.cells[ci].text = safe_val(hop.get(col))
+                            if r.cells[ci].paragraphs[0].runs:
+                                r.cells[ci].paragraphs[0].runs[0].font.italic = False
+                                r.cells[ci].paragraphs[0].runs[0].font.size = Pt(10)
+                                r.cells[ci].paragraphs[0].runs[0].font.name = "TH Sarabun New"
+                else:
+                    doc.add_paragraph("ไม่พบข้อมูล WinMTR สำหรับ SSID นี้")
+            else:
+                doc.add_paragraph("ไม่มีข้อมูล WinMTR")
+            doc.add_paragraph("")
+
+        # Heading 5: Spectrum
+        doc.add_heading("รูป Spectrum Analyzer", level=5)
+        add_word_placeholder(doc, f"แทรกรูป Spectrum ห้อง {room} ที่นี่")
+        doc.add_paragraph("")
+
+        # Heading 5: รูปห้อง
+        doc.add_heading("รูปภาพห้อง", level=5)
+        add_word_placeholder(doc, f"แทรกรูปภาพห้อง {room} ที่นี่")
+
+        doc.add_page_break()
 
 # ----------------------------------------------------------
 # Heading 3: ปัญหาที่ตรวจพบ  (อยู่ใต้ อาคาร)
