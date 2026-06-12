@@ -89,6 +89,40 @@ def make_output_dir(target_building):
     return output_dir
 
 
+def generate_report(target_building, update_status, client):
+    """ฟังก์ชันสำหรับสร้างรายงาน พร้อม callback สำหรับอัพเดตสถานะ"""
+    try:
+        update_status(f'📊 กำลังโหลดข้อมูลการสำรวจ...')
+        df = fetch_survey_data(client, target_building)
+        update_status(f'✓ โหลดข้อมูลแล้ว: {len(df)} แถว')
+        
+        if df.empty:
+            update_status('❌ ไม่พบข้อมูลการสำรวจสำหรับตึกนี้')
+            return 1
+
+        update_status(f'📡 กำลังโหลด traceroute hops...')
+        survey_ids = df['id'].tolist() if 'id' in df.columns else []
+        df_hops = fetch_traceroute_hops(client, survey_ids)
+        update_status(f'✓ โหลด traceroute hops แล้ว: {len(df_hops)} แถว')
+
+        output_dir = make_output_dir(target_building)
+        builder = ReportBuilder(df, df_hops, target_building, output_dir)
+
+        update_status('📝 กำลังสร้าง Excel...')
+        excel_path = builder.build_excel()
+        update_status(f'✅ Excel: {excel_path}')
+
+        update_status('📄 กำลังสร้าง Word...')
+        word_path = builder.build_word(excel_path)
+        update_status(f'✅ Word:  {word_path}')
+        
+        update_status('✅ เสร็จสมบูรณ์!')
+        return 0
+    except Exception as e:
+        update_status(f'❌ เกิดข้อผิดพลาด: {str(e)}')
+        return 1
+
+
 def main():
     try:
         client = create_supabase_client()
@@ -101,30 +135,15 @@ def main():
         print('❌ ไม่พบข้อมูลตึกใน Supabase')
         return 1
 
-    target_building = select_building(buildings)
+    def on_generate(target_building, update_status):
+        """Callback สำหรับการ generate ที่เรียกจาก GUI"""
+        return generate_report(target_building, update_status, client)
+
+    target_building = select_building(buildings, on_generate)
     if not target_building:
         print('❌ ไม่ได้เลือกตึก หยุดการทำงาน')
         return 1
 
-    df = fetch_survey_data(client, target_building)
-    print(f'surveys: {len(df)} แถว')
-    if df.empty:
-        print('❌ ไม่พบข้อมูลการสำรวจสำหรับตึกนี้')
-        return 1
-
-    survey_ids = df['id'].tolist() if 'id' in df.columns else []
-    df_hops = fetch_traceroute_hops(client, survey_ids)
-    print(f'traceroute_hops: {len(df_hops)} แถว')
-
-    output_dir = make_output_dir(target_building)
-    builder = ReportBuilder(df, df_hops, target_building, output_dir)
-
-    excel_path = builder.build_excel()
-    print(f'✅ Excel: {excel_path}')
-
-    word_path = builder.build_word(excel_path)
-    print(f'✅ Word:  {word_path}')
-    print('✅ เสร็จสมบูรณ์!')
     return 0
 
 

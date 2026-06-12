@@ -52,12 +52,20 @@ def create_excel_report(df, df_hops, target_building, output_dir):
     ws_data = wb.active
     ws_data.title = "Data"
 
+    def safe_convert(col, value):
+        if col not in {"note", "building", "ssid", "bssid", "ap_vendor", "band", "radio_type", "gateway_ip", "server_ip", "trace_target", "rating"} and value is not None:
+            try:
+                return float(value)
+            except (ValueError, TypeError):
+                return value
+        return value
+    
     _create_table_sheet(
         ws_data,
         ALL_COLS_TH,
         [
             [
-                float(row[col]) if col not in {"note", "building", "ssid", "bssid", "ap_vendor", "band", "radio_type", "gateway_ip", "server_ip", "trace_target", "rating"} and row.get(col) is not None else row.get(col)
+                safe_convert(col, row.get(col))
                 for col in ALL_COLS
             ]
             for _, row in df.iterrows()
